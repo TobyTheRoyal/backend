@@ -15,4 +15,7 @@ export class Watchlist {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   addedAt: Date;
+
+  @Column({ nullable: true })
+  rating: number;
 }

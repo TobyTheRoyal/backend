@@ -44,6 +44,21 @@ export class WatchlistService {
     return watchlist.map((entry) => entry.content);
   }
 
+  async setRating(userId: number, tmdbId: string, rating: number): Promise<void> {
+    const content = await this.contentRepository.findOne({ where: { tmdbId } });
+    if (!content) {
+      throw new NotFoundException('Content not found');
+    }
+    const watchlistEntry = await this.watchlistRepository.findOne({
+      where: { user: { id: userId }, content: { id: content.id } },
+    });
+    if (!watchlistEntry) {
+      throw new NotFoundException('Content not in watchlist');
+    }
+    watchlistEntry.rating = rating;
+    await this.watchlistRepository.save(watchlistEntry);
+  }
+
   async removeFromWatchlist(userId: number, tmdbId: string): Promise<void> {
     const content = await this.contentRepository.findOne({ where: { tmdbId } });
     if (!content) {

@@ -18,6 +18,19 @@ export class WatchlistController {
       throw new BadRequestException(`Failed to add to watchlist: ${error.message}`);
     }
   }
+  @UseGuards(JwtAuthGuard)
+@Post('rate')
+async setRating(@Request() req, @Body() body: { tmdbId: string; rating: number }) {
+  if (!body.tmdbId || body.rating == null) {
+    throw new BadRequestException('tmdbId and rating are required');
+  }
+  try {
+    await this.watchlistService.setRating(req.user.id, body.tmdbId, body.rating);
+    return { message: 'Rating set successfully' };
+  } catch (error) {
+    throw new BadRequestException(`Failed to set rating: ${error.message}`);
+  }
+}
 
   @UseGuards(JwtAuthGuard)
   @Get()
