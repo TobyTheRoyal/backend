@@ -8,6 +8,6 @@ import { Content } from './entities/content.entity';
   imports: [TypeOrmModule.forFeature([Content])],
   providers: [ContentService],
   controllers: [ContentController],
-  exports: [TypeOrmModule], // Exportiert ContentRepository
+  exports: [ContentService], // Exportiert ContentRepository
 })
 export class ContentModule {}

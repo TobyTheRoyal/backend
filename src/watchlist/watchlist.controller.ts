@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Delete, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, UseGuards, Request, Param, BadRequestException } from '@nestjs/common';
 import { WatchlistService } from './watchlist.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -9,8 +9,14 @@ export class WatchlistController {
   @UseGuards(JwtAuthGuard)
   @Post('add')
   async addToWatchlist(@Request() req, @Body() body: { tmdbId: string }) {
-    const user = req.user;
-    return this.watchlistService.addToWatchlist(user, body.tmdbId);
+    if (!body.tmdbId) {
+      throw new BadRequestException('tmdbId is required');
+    }
+    try {
+      return await this.watchlistService.addToWatchlist(req.user, body.tmdbId);
+    } catch (error) {
+      throw new BadRequestException(`Failed to add to watchlist: ${error.message}`);
+    }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -28,7 +34,11 @@ export class WatchlistController {
   @UseGuards(JwtAuthGuard)
   @Delete('user/:tmdbId')
   async removeFromWatchlist(@Request() req, @Param('tmdbId') tmdbId: string) {
-    await this.watchlistService.removeFromWatchlist(req.user.id, tmdbId);
-    return { message: 'Content removed from watchlist' };
+    try {
+      await this.watchlistService.removeFromWatchlist(req.user.id, tmdbId);
+      return { message: 'Content removed from watchlist' };
+    } catch (error) {
+      throw new BadRequestException(`Failed to remove from watchlist: ${error.message}`);
+    }
   }
 }

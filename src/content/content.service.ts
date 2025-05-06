@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Content } from './entities/content.entity';
@@ -31,10 +31,14 @@ export class ContentService {
 
   async searchTmdb(query: string, type: 'movie' | 'series'): Promise<any[]> {
     const endpoint = type === 'movie' ? 'search/movie' : 'search/tv';
-    const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
-      params: { api_key: this.tmdbApiKey, query },
-    });
-    return response.data.results;
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
+        params: { api_key: this.tmdbApiKey, query },
+      });
+      return response.data.results;
+    } catch (error) {
+      throw new NotFoundException(`Search failed for query: ${query}`);
+    }
   }
 
   async addFromTmdb(tmdbId: string, type: 'movie' | 'series'): Promise<Content> {
@@ -42,20 +46,28 @@ export class ContentService {
     if (existingContent) return existingContent;
 
     const endpoint = type === 'movie' ? `movie/${tmdbId}` : `tv/${tmdbId}`;
-    const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
-      params: { api_key: this.tmdbApiKey },
-    });
-    const data = response.data;
-    const content = this.contentRepository.create({
-      tmdbId,
-      type,
-      title: data.title || data.name,
-      releaseYear: parseInt(data.release_date?.split('-')[0] || data.first_air_date?.split('-')[0] || '0'),
-      poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : 'https://placehold.co/200x300',
-      imdbRating: data.vote_average || 0,
-      rtRating: 0, // Optional: RT-Daten separat abrufen
-    });
-    return this.contentRepository.save(content);
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
+        params: { api_key: this.tmdbApiKey },
+      });
+      const data = response.data;
+      const content = this.contentRepository.create({
+        tmdbId,
+        type,
+        title: data.title || data.name || 'Unknown Title',
+        releaseYear: parseInt(
+          data.release_date?.split('-')[0] || data.first_air_date?.split('-')[0] || '0',
+        ),
+        poster: data.poster_path
+          ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
+          : 'https://placehold.co/200x300',
+        imdbRating: data.vote_average || 0,
+        rtRating: 0,
+      });
+      return await this.contentRepository.save(content);
+    } catch (error) {
+      throw new NotFoundException(`Content with TMDB ID ${tmdbId} not found`);
+    }
   }
 
   async findAll(): Promise<Content[]> {
@@ -71,29 +83,39 @@ export class ContentService {
   }
 
   private async fetchAndSaveContent(endpoint: string): Promise<Content[]> {
-    const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
-      params: { api_key: this.tmdbApiKey },
-    });
-    const items = response.data.results || [];
-    const contents: Content[] = [];
-    for (const item of items) {
-      const contentData = {
-        tmdbId: item.id.toString(),
-        type: item.media_type || 'movie',
-        title: item.title || item.name,
-        releaseYear: parseInt(item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0] || '0'),
-        poster: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/200x300',
-        imdbRating: item.vote_average || 0,
-        rtRating: 0,
-      };
-      const existingContent = await this.contentRepository.findOne({ where: { tmdbId: contentData.tmdbId } });
-      if (!existingContent) {
-        const content = this.contentRepository.create(contentData);
-        contents.push(await this.contentRepository.save(content));
-      } else {
-        contents.push(existingContent);
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
+        params: { api_key: this.tmdbApiKey },
+      });
+      const items = response.data.results || [];
+      const contents: Content[] = [];
+      for (const item of items) {
+        const contentData = {
+          tmdbId: item.id.toString(),
+          type: item.media_type || 'movie',
+          title: item.title || item.name || 'Unknown Title',
+          releaseYear: parseInt(
+            item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0] || '0',
+          ),
+          poster: item.poster_path
+            ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+            : 'https://placehold.co/200x300',
+          imdbRating: item.vote_average || 0,
+          rtRating: 0,
+        };
+        const existingContent = await this.contentRepository.findOne({
+          where: { tmdbId: contentData.tmdbId },
+        });
+        if (!existingContent) {
+          const content = this.contentRepository.create(contentData);
+          contents.push(await this.contentRepository.save(content));
+        } else {
+          contents.push(existingContent);
+        }
       }
+      return contents;
+    } catch (error) {
+      throw new NotFoundException(`Failed to fetch content from ${endpoint}`);
     }
-    return contents;
   }
 }
