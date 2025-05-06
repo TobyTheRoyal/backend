@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Content } from './entities/content.entity';
 import { ContentService } from './content.service';
 import { ContentController } from './content.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Content } from './entities/content.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Content])],
   providers: [ContentService],
   controllers: [ContentController],
-  exports: [ContentService], // Exportiere den Service für andere Module
+  exports: [TypeOrmModule], // Exportiert ContentRepository
 })
 export class ContentModule {}

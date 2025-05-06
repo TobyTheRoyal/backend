@@ -12,21 +12,19 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto): Promise<{ access_token: string }> {
     const { username, email, password } = registerDto;
     try {
       console.log('Registering user:', { username, email });
       const existingUserByEmail = await this.usersService.findByEmail(email);
-      if (existingUserByEmail) {
-        throw new ConflictException('Email already exists');
-      }
+      if (existingUserByEmail) throw new ConflictException('Email already exists');
       const existingUserByUsername = await this.usersService.findByUsername(username);
-      if (existingUserByUsername) {
-        throw new ConflictException('Username already exists');
-      }
+      if (existingUserByUsername) throw new ConflictException('Username already exists');
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await this.usersService.create({ username, email, password: hashedPassword });
-      const payload = { username: user.username, sub: user.id };
+      if (!user || !user.id) throw new Error('Failed to create user');
+      console.log('User created:', { id: user.id, email: user.email });
+      const payload = { email: user.email, sub: user.id };
       const access_token = this.jwtService.sign(payload);
       console.log('Generated token:', access_token);
       return { access_token };
@@ -36,10 +34,10 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
     const { email, password } = loginDto;
     try {
-      console.log('Login attempt:', { email }); // Debugging
+      console.log('Login attempt:', { email });
       const user = await this.usersService.findByEmail(email);
       if (!user) {
         console.log('User not found:', email);
@@ -50,9 +48,9 @@ export class AuthService {
         console.log('Password invalid for:', email);
         throw new UnauthorizedException('Invalid credentials');
       }
-      const payload = { username: user.username, sub: user.id };
+      const payload = { email: user.email, sub: user.id };
       const access_token = this.jwtService.sign(payload);
-      console.log('Login successful, token:', access_token); // Debugging
+      console.log('Login successful, token:', access_token);
       return { access_token };
     } catch (error) {
       console.error('Login error:', error.message, error.stack);

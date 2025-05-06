@@ -1,38 +1,32 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    private userRepository: Repository<User>,
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.userRepository.findOne({ where: { email } });
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { username } });
+    return this.userRepository.findOne({ where: { username } });
   }
-  
 
-  async create(registerDto: {
-    username: string;
-    email: string;
-    password: string;
-  }): Promise<User> {
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const user = this.usersRepository.create({
-      ...registerDto,
-      password: hashedPassword,
-    });
-    return this.usersRepository.save(user);
+  async create(userData: { username: string; email: string; password: string }): Promise<User> {
+    const user = this.userRepository.create(userData);
+    try {
+      const savedUser = await this.userRepository.save(user);
+      console.log('User saved:', { id: savedUser.id, email: savedUser.email });
+      return savedUser;
+    } catch (error) {
+      console.error('Error saving user:', error.message, error.stack);
+      throw new ConflictException('Could not create user: ' + error.message);
+    }
   }
 }
