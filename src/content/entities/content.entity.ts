@@ -7,7 +7,7 @@ export class Content {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ name: 'tmdb_id' }) // Mappt auf Datenbankspalte tmdb_id
   tmdbId: string;
 
   @Column()
@@ -26,7 +26,7 @@ export class Content {
   imdbRating: number;
 
   @Column({ nullable: true, type: 'float' })
-  rtRating: number;
+  rtRating: number | null | undefined; // Explizit null und undefined erlauben
 
   @OneToMany(() => Watchlist, (watchlist) => watchlist.content)
   watchlist: Watchlist[];

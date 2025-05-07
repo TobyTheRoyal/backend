@@ -7,7 +7,9 @@ import axios from 'axios';
 @Injectable()
 export class ContentService {
   private readonly tmdbApiKey = process.env.TMDB_API_KEY || '1b3d7c196e53b4ebab10bf60054ef369';
+  private readonly omdbApiKey = process.env.OMDB_API_KEY || '41518ee9';
   private readonly tmdbBaseUrl = 'https://api.themoviedb.org/3';
+  private readonly omdbBaseUrl = 'http://www.omdbapi.com/';
 
   constructor(
     @InjectRepository(Content)
@@ -43,15 +45,14 @@ export class ContentService {
 
   async addFromTmdb(tmdbId: string, type: 'movie' | 'series'): Promise<Content> {
     const existingContent = await this.contentRepository.findOne({ where: { tmdbId } });
-    if (existingContent) return existingContent;
-
     const endpoint = type === 'movie' ? `movie/${tmdbId}` : `tv/${tmdbId}`;
     try {
       const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
         params: { api_key: this.tmdbApiKey },
       });
       const data = response.data;
-      const content = this.contentRepository.create({
+      const omdbData = await this.fetchOmdbData(data.imdb_id);
+      const contentData = {
         tmdbId,
         type,
         title: data.title || data.name || 'Unknown Title',
@@ -61,9 +62,12 @@ export class ContentService {
         poster: data.poster_path
           ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
           : 'https://placehold.co/200x300',
-        imdbRating: data.vote_average || 0,
-        rtRating: 0,
-      });
+        imdbRating: parseFloat(omdbData.imdbRating) || data.vote_average || 0,
+        rtRating: omdbData.rtRating ? parseInt(omdbData.rtRating.replace('%', '')) : null,
+      };
+      const content = existingContent
+        ? Object.assign(existingContent, contentData)
+        : this.contentRepository.create(contentData);
       return await this.contentRepository.save(content);
     } catch (error) {
       throw new NotFoundException(`Content with TMDB ID ${tmdbId} not found`);
@@ -82,6 +86,27 @@ export class ContentService {
     return this.contentRepository.findOne({ where: { tmdbId } });
   }
 
+  private async fetchOmdbData(imdbId: string): Promise<{ imdbRating: string; rtRating: string | null }> {
+    if (!imdbId) {
+      console.warn(`No IMDb ID provided for OMDb request`);
+      return { imdbRating: '0', rtRating: null };
+    }
+    try {
+      const response = await axios.get(this.omdbBaseUrl, {
+        params: { i: imdbId, apikey: this.omdbApiKey },
+      });
+      const rtRating = response.data.Ratings?.find((r: { Source: string; Value: string }) => r.Source === 'Rotten Tomatoes')?.Value;
+      console.log(`OMDb data for IMDb ID ${imdbId}:`, { imdbRating: response.data.imdbRating, rtRating });
+      return {
+        imdbRating: response.data.imdbRating || '0',
+        rtRating: rtRating || null,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch OMDb data for IMDb ID ${imdbId}:`, error.message);
+      return { imdbRating: '0', rtRating: null };
+    }
+  }
+
   private async fetchAndSaveContent(endpoint: string): Promise<Content[]> {
     try {
       const response = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, {
@@ -90,8 +115,18 @@ export class ContentService {
       const items = response.data.results || [];
       const contents: Content[] = [];
       for (const item of items) {
+        const tmdbId = item.id.toString();
+        const existingContent = await this.contentRepository.findOne({
+          where: { tmdbId },
+        });
+        const tmdbUrl = `${this.tmdbBaseUrl}/${item.media_type || 'movie'}/${tmdbId}`;
+        const tmdbResponse = await axios.get(tmdbUrl, {
+          params: { api_key: this.tmdbApiKey },
+        });
+        const tmdbData = tmdbResponse.data;
+        const omdbData = await this.fetchOmdbData(tmdbData.imdb_id);
         const contentData = {
-          tmdbId: item.id.toString(),
+          tmdbId,
           type: item.media_type || 'movie',
           title: item.title || item.name || 'Unknown Title',
           releaseYear: parseInt(
@@ -100,18 +135,13 @@ export class ContentService {
           poster: item.poster_path
             ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
             : 'https://placehold.co/200x300',
-          imdbRating: item.vote_average || 0,
-          rtRating: 0,
+          imdbRating: parseFloat(omdbData.imdbRating) || item.vote_average || 0,
+          rtRating: omdbData.rtRating ? parseInt(omdbData.rtRating.replace('%', '')) : null,
         };
-        const existingContent = await this.contentRepository.findOne({
-          where: { tmdbId: contentData.tmdbId },
-        });
-        if (!existingContent) {
-          const content = this.contentRepository.create(contentData);
-          contents.push(await this.contentRepository.save(content));
-        } else {
-          contents.push(existingContent);
-        }
+        const content = existingContent
+          ? Object.assign(existingContent, contentData)
+          : this.contentRepository.create(contentData);
+        contents.push(await this.contentRepository.save(content));
       }
       return contents;
     } catch (error) {
