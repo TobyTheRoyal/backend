@@ -3,18 +3,67 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Content } from './entities/content.entity';
 import axios from 'axios';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable()
 export class ContentService {
-  private readonly tmdbApiKey = process.env.TMDB_API_KEY || '1b3d7c196e53b4ebab10bf60054ef369';
-  private readonly omdbApiKey = process.env.OMDB_API_KEY || '41518ee9';
+  private readonly tmdbApiKey = process.env.TMDB_API_KEY;
+  private readonly omdbApiKey = process.env.OMDB_API_KEY;
   private readonly tmdbBaseUrl = 'https://api.themoviedb.org/3';
   private readonly omdbBaseUrl = 'http://www.omdbapi.com/';
+  private cache: Content[] = [];
 
   constructor(
     @InjectRepository(Content)
     private contentRepository: Repository<Content>,
+    private httpService: HttpService
   ) {}
+
+  // Cron-Job zum täglichen Caching
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async handleCron() {
+    const all: Content[] = [];
+    let page = 1;
+    // Erster Request, um total_pages zu bekommen
+    const firstResp = await firstValueFrom(
+      this.httpService.get(
+        `${this.tmdbBaseUrl}/discover/movie`,
+        { params: { api_key: this.tmdbApiKey, page: '1' } }
+      ).pipe(map(r => r.data))
+    );
+    const totalPages = Math.min(firstResp.total_pages, 500);
+    all.push(...firstResp.results.map(item => this.mapToEntity(item)));
+    // Weitere Seiten
+    for (page = 2; page <= totalPages; page++) {
+      const resp = await firstValueFrom(
+        this.httpService.get(
+          `${this.tmdbBaseUrl}/discover/movie`,
+          { params: { api_key: this.tmdbApiKey, page: page.toString() } }
+        ).pipe(map(r => r.data))
+      );
+      all.push(...resp.results.map(item => this.mapToEntity(item)));
+    }
+    this.cache = all;
+  }
+
+  getAllMoviesCached(): Content[] {
+    return this.cache;
+  }
+
+  private mapToEntity(item: any): Content {
+    const content = new Content();
+    content.tmdbId = item.id.toString();
+    content.title = item.title || item.name;
+    content.releaseYear = parseInt((item.release_date || item.first_air_date || '').split('-')[0]) || 0;
+    content.poster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/200x300';
+    content.imdbRating = parseFloat(item.vote_average) || null;
+    content.rtRating = null;
+    content.type = 'movie';
+    return content;
+  }
 
   async getTrending(): Promise<Content[]> {
     const endpoint = 'trending/movie/week';
@@ -147,5 +196,5 @@ export class ContentService {
     } catch (error) {
       throw new NotFoundException(`Failed to fetch content from ${endpoint}`);
     }
-  }
+  } 
 }

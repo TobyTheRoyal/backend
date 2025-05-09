@@ -10,9 +10,13 @@ import { ContentModule } from './content/content.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { RatingModule } from './ratings/ratings.module';
 import { MoviesModule } from './movies/movies.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    HttpModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

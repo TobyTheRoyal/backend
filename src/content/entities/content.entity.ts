@@ -23,7 +23,7 @@ export class Content {
   poster: string;
 
   @Column({ nullable: true, type: 'float' })
-  imdbRating: number;
+  imdbRating: number | null | undefined;
 
   @Column({ nullable: true, type: 'float' })
   rtRating: number | null | undefined; // Explizit null und undefined erlauben
