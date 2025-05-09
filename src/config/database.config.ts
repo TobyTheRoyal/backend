@@ -8,5 +8,5 @@ export const databaseConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASSWORD || 'securepass',
   database: process.env.DB_DATABASE || 'streamfinder',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true, // Für Entwicklung, später auf false setzen
+  synchronize: false, // Für Entwicklung, später auf false setzen
 };

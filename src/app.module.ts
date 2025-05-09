@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { ContentModule } from './content/content.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { RatingModule } from './ratings/ratings.module';
+import { MoviesModule } from './movies/movies.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RatingModule } from './ratings/ratings.module';
     ContentModule,
     WatchlistModule,
     RatingModule,
+    MoviesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
