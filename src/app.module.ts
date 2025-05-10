@@ -15,12 +15,12 @@ import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
-    HttpModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
+    HttpModule,
     TypeOrmModule.forRoot(databaseConfig),
     AuthModule,
     UsersModule,

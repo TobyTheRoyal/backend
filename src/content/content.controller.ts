@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query} from '@nestjs/common';
 import { ContentService } from './content.service';
+import { Content } from './entities/content.entity';
 
 @Controller('content')
 export class ContentController {
@@ -28,6 +29,12 @@ export class ContentController {
   @Post('search')
   async searchTmdb(@Body() body: { query: string; type: 'movie' | 'series' }) {
     return this.contentService.searchTmdb(body.query, body.type);
+  }
+
+  @Get('movies-page')
+  async getMoviesPageWithRt(@Query('page') page = '1'): Promise<Content[]> {
+    const p = parseInt(page, 10) || 1;
+    return this.contentService.getMoviesPageWithRt(p);
   }
 
   @Get()

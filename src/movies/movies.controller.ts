@@ -6,17 +6,6 @@ import { Content } from '../content/entities/content.entity';
 export class MoviesController {
   constructor(private readonly contentService: ContentService) {}
 
-  @Get()
-  async findAll(): Promise<Content[]> {
-    const all = await this.contentService.findAll();
-    return all.filter(item => item.type === 'movie');
-  }
-
-  @Get()
-  getCached(): Content[] {
-    return this.contentService.getAllMoviesCached();
-  }
-
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Content> {
     const content = await this.contentService.findById(+id);
