@@ -27,8 +27,8 @@ export class ContentController {
   }
 
   @Post('search')
-  async searchTmdb(@Body() body: { query: string; type: 'movie' | 'series' }) {
-    return this.contentService.searchTmdb(body.query, body.type);
+  async searchTmdb(@Body() body: { query: string;}) {
+    return this.contentService.searchTmdb(body.query);
   }
 
   @Get('movies-page')

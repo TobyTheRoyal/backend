@@ -5,7 +5,7 @@ import { Content } from './entities/content.entity';
 import axios from 'axios';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, Observable, of } from 'rxjs';
 import { map, timeout, catchError } from 'rxjs/operators';
 
 @Injectable()
@@ -133,14 +133,32 @@ export class ContentService implements OnModuleInit {
     }
   }
 
-  async searchTmdb(query: string, type: 'movie' | 'series'): Promise<any[]> {
-    const endpoint = type === 'movie' ? 'search/movie' : 'search/tv';
-    try {
-      const { data } = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, { params: { api_key: this.tmdbApiKey, query } });
-      return data.results;
-    } catch {
-      throw new NotFoundException(`Search failed for query: ${query}`);
+  searchTmdb(query: string): Observable<Content[]> {
+    if (!query.trim()) {
+      return new Observable<Content[]>(obs => { obs.next([]); obs.complete(); });
     }
+    return this.httpService.get<{ results: any[] }>(
+      `${this.tmdbBaseUrl}/search/movie`,
+      { params: { api_key: this.tmdbApiKey, query } }
+    ).pipe(
+      map(resp =>
+        resp.data.results.map(item => ({
+          id:           item.id,
+          tmdbId:       item.id.toString(),
+          title:        item.title,
+          releaseYear:  +item.release_date.slice(0,4),
+          poster:       item.poster_path
+                        ? 'https://image.tmdb.org/t/p/w500'+item.poster_path
+                        : 'https://placehold.co/200x300',
+          type:         'movie',
+          imdbRating:   item.vote_average,
+          rtRating:     undefined,
+          rating:       undefined,
+          watchlist: [],
+          ratings:[],
+        } as Content))
+      )
+    );
   }
 
   async addFromTmdb(tmdbId: string, type: 'movie' | 'series'): Promise<Content> {
