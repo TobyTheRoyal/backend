@@ -109,6 +109,37 @@ export class ContentService implements OnModuleInit {
     );
   }
 
+  async getSeriesPageWithRt(page: number): Promise<Content[]> {
+    const { results } = await firstValueFrom(
+      this.httpService
+        .get(`${this.tmdbBaseUrl}/discover/tv`, { params: { api_key: this.tmdbApiKey, page } })
+        .pipe(
+          map(r => r.data),
+          catchError(() => of({ results: [] })),
+        ),
+    );
+
+    return Promise.all(
+      results.map(async item => {
+        const content = this.mapToEntity(item);
+        const details = await firstValueFrom(
+          this.httpService
+            .get(`${this.tmdbBaseUrl}/tv/${item.id}`, { params: { api_key: this.tmdbApiKey } })
+            .pipe(
+              map(r => r.data),
+              catchError(() => of({ imdb_id: null })),
+            ),
+        );
+
+        const omdb = details.imdb_id
+          ? await this.fetchOmdbData(details.imdb_id)
+          : { imdbRating: '0', rtRating: null };
+        content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
+        return content;
+      }),
+    );
+  }
+
   private mapToEntity(item: any): Content {
     const c = new Content();
     c.tmdbId      = item.id.toString();
@@ -119,7 +150,7 @@ export class ContentService implements OnModuleInit {
       : 'https://placehold.co/200x300';
     c.imdbRating  = parseFloat(item.vote_average);
     c.rtRating    = null;
-    c.type        = 'movie';
+    c.type        = 'series';
     return c;
   }
 

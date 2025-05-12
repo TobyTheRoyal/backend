@@ -37,6 +37,12 @@ export class ContentController {
     return this.contentService.getMoviesPageWithRt(p);
   }
 
+  @Get('series-page')
+  async getSeriesPageWithRt(@Query('page') page = '1'): Promise<Content[]> {
+    const p = parseInt(page, 10) || 1;
+    return this.contentService.getSeriesPageWithRt(p);
+  }
+
   @Get()
   async findAll() {
     return this.contentService.findAll();
