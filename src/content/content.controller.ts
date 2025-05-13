@@ -26,10 +26,15 @@ export class ContentController {
     return this.contentService.addFromTmdb(body.tmdbId, body.type);
   }
 
-  @Post('search')
+  /*@Post('search')
   async searchTmdb(@Body() body: { query: string;}) {
     return this.contentService.searchTmdb(body.query);
-  }
+  }*/
+
+  @Post('search')
+  async searchAll(@Body() body: { query: string }) {
+  return this.contentService.searchAll(body.query);
+}
 
   @Get('movies-page')
   async getMoviesPageWithRt(@Query('page') page = '1'): Promise<Content[]> {

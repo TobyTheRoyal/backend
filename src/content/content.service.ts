@@ -230,4 +230,13 @@ export class ContentService implements OnModuleInit {
   findByTmdbId(tmdbId: string): Promise<Content | null> {
     return this.contentRepository.findOne({ where: { tmdbId } });
   }
+
+  async searchAll(query: string): Promise<Content[]> {
+  const { data } = await axios.get(`${this.tmdbBaseUrl}/search/multi`, {
+    params: { api_key: this.tmdbApiKey, query }
+  });
+  return data.results
+    .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
+    .map((item: any) => this.mapToEntity(item, item.media_type === 'tv' ? 'tv' : 'movie'));
+}
 }
