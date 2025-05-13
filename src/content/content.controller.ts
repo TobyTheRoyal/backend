@@ -22,7 +22,7 @@ export class ContentController {
   }
 
   @Post('add-tmdb')
-  async addFromTmdb(@Body() body: { tmdbId: string; type: 'movie' | 'series' }) {
+  async addFromTmdb(@Body() body: { tmdbId: string; type: 'movie' | 'tv' }) {
     return this.contentService.addFromTmdb(body.tmdbId, body.type);
   }
 

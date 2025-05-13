@@ -2,11 +2,12 @@ import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Content } from './entities/content.entity';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { map, timeout, catchError } from 'rxjs/operators';
+
 
 @Injectable()
 export class ContentService implements OnModuleInit {
@@ -54,7 +55,7 @@ export class ContentService implements OnModuleInit {
 
       cache.length = 0;
       for (const item of data.results) {
-        const content = this.mapToEntity(item);
+        const content = this.mapToEntity(item, 'movie');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/movie/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -90,7 +91,7 @@ export class ContentService implements OnModuleInit {
 
     return Promise.all(
       results.map(async item => {
-        const content = this.mapToEntity(item);
+        const content = this.mapToEntity(item, 'movie');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/movie/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -121,7 +122,7 @@ export class ContentService implements OnModuleInit {
 
     return Promise.all(
       results.map(async item => {
-        const content = this.mapToEntity(item);
+        const content = this.mapToEntity(item, 'tv');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/tv/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -140,18 +141,24 @@ export class ContentService implements OnModuleInit {
     );
   }
 
-  private mapToEntity(item: any): Content {
+  private mapToEntity(item: any, mediaType: 'movie'|'tv'): Content {
     const c = new Content();
-    c.tmdbId      = item.id.toString();
-    c.title       = item.title || item.name;
-    c.releaseYear = parseInt((item.release_date || '').slice(0, 4), 10) || 0;
-    c.poster      = item.poster_path
-      ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-      : 'https://placehold.co/200x300';
-    c.imdbRating  = parseFloat(item.vote_average);
-    c.rtRating    = null;
-    c.type        = 'series';
-    return c;
+  c.tmdbId = item.id.toString();
+  c.type   = mediaType;
+  c.title  = mediaType === 'movie' ? item.title : item.name;
+  // Filme haben release_date, Serien first_air_date
+  const dateStr = mediaType === 'movie'
+    ? item.release_date
+    : item.first_air_date;
+  c.releaseYear = dateStr 
+    ? parseInt(dateStr.slice(0,4), 10)
+    : 0;
+  c.poster     = item.poster_path
+    ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+    : 'https://placehold.co/200x300';
+  c.imdbRating = parseFloat(item.vote_average) || null;
+  c.rtRating   = null;
+  return c;
   }
 
   private async fetchOmdbData(imdbId: string): Promise<{ imdbRating: string; rtRating: string | null }> {
@@ -192,15 +199,19 @@ export class ContentService implements OnModuleInit {
     );
   }
 
-  async addFromTmdb(tmdbId: string, type: 'movie' | 'series'): Promise<Content> {
+  async addFromTmdb(tmdbId: string, type: 'movie' | 'tv'): Promise<Content> {
     const endpoint = type === 'movie' ? `movie/${tmdbId}` : `tv/${tmdbId}`;
     const { data } = await axios.get(`${this.tmdbBaseUrl}/${endpoint}`, { params: { api_key: this.tmdbApiKey } });
     const omdb = await this.fetchOmdbData(data.imdb_id);
+    const rawDate = type === 'movie'
+    ? data.release_date
+    : data.first_air_date;
+    const year = rawDate ? parseInt(rawDate.slice(0,4), 10) : 0;
     const entity = this.contentRepository.create({
       tmdbId,
       type,
       title: data.title || data.name,
-      releaseYear: parseInt((data.release_date || '').split('-')[0], 10) || 0,
+      releaseYear: year,
       poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : 'https://placehold.co/200x300',
       imdbRating: parseFloat(omdb.imdbRating) || data.vote_average,
       rtRating: omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null,
