@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Watchlist } from '../../watchlist/entities/watchlist.entity';
 import { Rating } from '../../ratings/entities/ratings.entity';
+import { CastMember } from 'src/cast-member/cast-member.entity';
 
 @Entity('contents')
 export class Content {
@@ -33,4 +34,16 @@ export class Content {
 
   @OneToMany(() => Rating, (rating) => rating.content)
   ratings: Rating[];
+
+  @Column('text', { array: true, nullable: true})
+  genres: string[];
+
+  @Column({ nullable: true })
+  overview: string;
+
+  @OneToMany(() => CastMember, cm => cm.content, {
+    cascade: ['insert', 'update'],  // Insert/Update der CastMembers in einem Rutsch
+    eager: true                     // immer mitladen (optional)
+  })
+  cast: CastMember[];
 }
