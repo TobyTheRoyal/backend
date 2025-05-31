@@ -27,7 +27,10 @@ export class Content {
   imdbRating: number | null | undefined;
 
   @Column({ nullable: true, type: 'float' })
-  rtRating: number | null | undefined; // Explizit null und undefined erlauben
+  rtRating: number | null | undefined;
+
+  @Column({ nullable: true })
+  language: string; // Add this if not present
 
   @OneToMany(() => Watchlist, (watchlist) => watchlist.content)
   watchlist: Watchlist[];

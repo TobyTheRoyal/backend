@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query} from '@nestjs/common';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { ContentService } from './content.service';
 import { Content } from './entities/content.entity';
 
@@ -26,20 +26,29 @@ export class ContentController {
     return this.contentService.addFromTmdb(body.tmdbId, body.type);
   }
 
-  /*@Post('search')
-  async searchTmdb(@Body() body: { query: string;}) {
-    return this.contentService.searchTmdb(body.query);
-  }*/
-
   @Post('search')
   async searchAll(@Body() body: { query: string }) {
-  return this.contentService.searchAll(body.query);
-}
+    return this.contentService.searchAll(body.query);
+  }
 
   @Get('movies-page')
-  async getMoviesPageWithRt(@Query('page') page = '1'): Promise<Content[]> {
+  async getMoviesPageWithRt(
+    @Query('page') page = '1',
+    @Query('genre') genre?: string,
+    @Query('releaseYearMin') releaseYearMin?: string,
+    @Query('releaseYearMax') releaseYearMax?: string,
+    @Query('imdbRatingMin') imdbRatingMin?: string,
+    @Query('rtRatingMin') rtRatingMin?: string,
+  ): Promise<Content[]> {
     const p = parseInt(page, 10) || 1;
-    return this.contentService.getMoviesPageWithRt(p);
+    const filters = {
+      genre: genre || '',
+      releaseYearMin: releaseYearMin ? parseInt(releaseYearMin, 10) : 1900,
+      releaseYearMax: releaseYearMax ? parseInt(releaseYearMax, 10) : new Date().getFullYear(),
+      imdbRatingMin: imdbRatingMin ? parseFloat(imdbRatingMin) : 0,
+      rtRatingMin: rtRatingMin ? parseInt(rtRatingMin, 10) : 0,
+    };
+    return this.contentService.getMoviesPageWithRt(p, filters);
   }
 
   @Get('series-page')
