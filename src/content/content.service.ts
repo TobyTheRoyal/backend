@@ -105,9 +105,7 @@ export class ContentService implements OnModuleInit {
       }
       params['primary_release_date.gte'] = `${filters.releaseYearMin}-01-01`;
       params['primary_release_date.lte'] = `${filters.releaseYearMax}-12-31`;
-      if (filters.imdbRatingMin > 0) {
-        params['vote_average.gte'] = filters.imdbRatingMin; // Keep for TMDB IMDb filter
-      }
+      
     }
 
     const { results } = await firstValueFrom(
