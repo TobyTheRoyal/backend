@@ -5,8 +5,8 @@ import { Content } from './entities/content.entity';
 import axios from 'axios';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, Observable, of } from 'rxjs';
-import { map, timeout, catchError } from 'rxjs/operators';
+import { firstValueFrom, Observable, of, from } from 'rxjs';
+import { map, timeout, catchError, mergeMap } from 'rxjs/operators';
 import { CastMember } from 'src/cast-member/cast-member.entity';
 
 export interface FilterOptions {
@@ -27,6 +27,7 @@ export class ContentService implements OnModuleInit {
   private cacheTrending: Content[] = [];
   private cacheTopRated: Content[] = [];
   private cacheNewReleases: Content[] = [];
+  private genreMap: Map<number, string> = new Map();
 
   constructor(
     @InjectRepository(Content)
@@ -34,7 +35,8 @@ export class ContentService implements OnModuleInit {
     private readonly httpService: HttpService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
+    await this.getGenres();
     this.updateHomeCaches();
   }
 
@@ -63,7 +65,7 @@ export class ContentService implements OnModuleInit {
 
       cache.length = 0;
       for (const item of data.results) {
-        const content = this.mapToEntity(item, 'movie');
+        const content = await this.mapToEntity(item, 'movie');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/movie/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -119,7 +121,7 @@ export class ContentService implements OnModuleInit {
 
     return Promise.all(
       results.map(async item => {
-        const content = this.mapToEntity(item, 'movie');
+        const content = await this.mapToEntity(item, 'movie');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/movie/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -166,7 +168,7 @@ export class ContentService implements OnModuleInit {
 
     return Promise.all(
       results.map(async item => {
-        const content = this.mapToEntity(item, 'tv');
+        const content = await this.mapToEntity(item, 'tv');
         const details = await firstValueFrom(
           this.httpService
             .get(`${this.tmdbBaseUrl}/tv/${item.id}`, { params: { api_key: this.tmdbApiKey } })
@@ -191,18 +193,28 @@ export class ContentService implements OnModuleInit {
     const { data } = await axios.get(`${this.tmdbBaseUrl}/genre/movie/list`, {
       params: { api_key: this.tmdbApiKey },
     });
+    this.genreMap = new Map(
+      data.genres.map((g: any) => [g.id, g.name] as [number, string]),
+    );
     return data.genres.map((genre: any) => genre.name);
   }
 
   private async getGenreId(genreName: string): Promise<string> {
-    const { data } = await axios.get(`${this.tmdbBaseUrl}/genre/movie/list`, {
-      params: { api_key: this.tmdbApiKey },
-    });
-    const genre = data.genres.find((g: any) => g.name === genreName);
-    return genre ? genre.id.toString() : '';
+    if (this.genreMap.size === 0) {
+      await this.getGenres();
+    }
+    for (const [id, name] of this.genreMap.entries()) {
+      if (name === genreName) {
+        return id.toString();
+      }
+    }
+    return '';
   }
 
-  private mapToEntity(item: any, mediaType: 'movie' | 'tv'): Content {
+  private async mapToEntity(
+    item: any,
+    mediaType: 'movie' | 'tv',
+  ): Promise<Content> {
     const c = new Content();
     c.tmdbId = item.id.toString();
     c.type = mediaType;
@@ -215,7 +227,9 @@ export class ContentService implements OnModuleInit {
     c.imdbRating = null;
     c.rtRating = null;
     c.genres = item.genre_ids
-      ? item.genre_ids.map((id: number) => this.getGenreName(id))
+      ? await Promise.all(
+          item.genre_ids.map((id: number) => this.getGenreName(id)),
+        )
       : item.genres?.map((g: any) => g.name) || [];
     c.overview = item.overview || '';
     c.cast = [];
@@ -223,29 +237,11 @@ export class ContentService implements OnModuleInit {
     return c;
   }
 
-  private getGenreName(genreId: number): string {
-    const genreMap: { [key: number]: string } = {
-      28: 'Action',
-      12: 'Adventure',
-      16: 'Animation',
-      35: 'Comedy',
-      80: 'Crime',
-      99: 'Documentary',
-      18: 'Drama',
-      10751: 'Family',
-      14: 'Fantasy',
-      36: 'History',
-      27: 'Horror',
-      10402: 'Music',
-      9648: 'Mystery',
-      10749: 'Romance',
-      878: 'Science Fiction',
-      10770: 'TV Movie',
-      53: 'Thriller',
-      10752: 'War',
-      37: 'Western',
-    };
-    return genreMap[genreId] || '';
+  private async getGenreName(genreId: number): Promise<string> {
+    if (this.genreMap.size === 0) {
+      await this.getGenres();
+    }
+    return this.genreMap.get(genreId) || '';
   }
 
   private async fetchOmdbData(imdbId: string): Promise<{ imdbRating: string | null; rtRating: string | null }> {
@@ -277,9 +273,13 @@ export class ContentService implements OnModuleInit {
         params: { api_key: this.tmdbApiKey, query },
       })
       .pipe(
-        map(resp =>
-          resp.data.results.map(item => this.mapToEntity(item, 'movie'))
-        )
+        mergeMap(resp =>
+          from(
+            Promise.all(
+              resp.data.results.map(item => this.mapToEntity(item, 'movie')),
+            ),
+          ),
+        ),
       );
   }
 
@@ -338,8 +338,13 @@ export class ContentService implements OnModuleInit {
     const { data } = await axios.get(`${this.tmdbBaseUrl}/search/multi`, {
       params: { api_key: this.tmdbApiKey, query },
     });
-    return data.results
-      .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
-      .map((item: any) => this.mapToEntity(item, item.media_type === 'tv' ? 'tv' : 'movie'));
+    const items = data.results.filter(
+      (r: any) => r.media_type === 'movie' || r.media_type === 'tv',
+    );
+    return Promise.all(
+      items.map(item =>
+        this.mapToEntity(item, item.media_type === 'tv' ? 'tv' : 'movie'),
+      ),
+    );
   }
 }

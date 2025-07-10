@@ -57,6 +57,11 @@ export class ContentController {
     return this.contentService.getSeriesPageWithRt(p);
   }
 
+  @Get ('genres') 
+  async getGenres(): Promise<string[]> {
+    return this.contentService.getGenres();
+  }
+
   @Get()
   async findAll() {
     return this.contentService.findAll();
