@@ -41,6 +41,9 @@ export class Content {
   @Column('text', { array: true, nullable: true})
   genres: string[];
 
+  @Column('text', { array: true, nullable: true })
+  providers: string[] | null;
+
   @Column({ nullable: true })
   overview: string;
 

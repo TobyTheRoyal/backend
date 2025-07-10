@@ -15,6 +15,7 @@ export interface FilterOptions {
   releaseYearMax: number;
   imdbRatingMin: number;
   rtRatingMin: number;
+  provider?: string;
 }
 
 @Injectable()
@@ -138,6 +139,12 @@ export class ContentService implements OnModuleInit {
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
         console.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
 
+        const providers = await this.fetchWatchProviders(item.id, 'movie');
+
+        if (filters?.provider && !providers.includes(filters.provider)) {
+          return null;
+        }
+
         // Exclude if rtRating is null and rtRatingMin is set
         if (filters && filters.rtRatingMin > 0 && content.rtRating === null) {
           return null;
@@ -234,6 +241,7 @@ export class ContentService implements OnModuleInit {
     c.overview = item.overview || '';
     c.cast = [];
     c.language = item.original_language || 'en';
+    c.providers = await this.fetchWatchProviders(c.tmdbId, mediaType);
     return c;
   }
 
@@ -258,6 +266,32 @@ export class ContentService implements OnModuleInit {
     } catch (error) {
       console.error(`Failed to fetch OMDB data for ${imdbId}:`, error);
       return { imdbRating: null, rtRating: null };
+    }
+  }
+
+  private async fetchWatchProviders(tmdbId: string, mediaType: 'movie' | 'tv'): Promise<string[]> {
+    try {
+      const { data } = await axios.get(
+        `${this.tmdbBaseUrl}/${mediaType}/${tmdbId}/watch/providers`,
+        { params: { api_key: this.tmdbApiKey } },
+      );
+      const providers: string[] = [];
+      const region = data.results?.AT;
+      if (region) {
+        for (const key of ['flatrate', 'rent', 'buy']) {
+          if (region[key]) {
+            for (const p of region[key]) {
+              if (!providers.includes(p.provider_name)) {
+                providers.push(p.provider_name);
+              }
+            }
+          }
+        }
+      }
+      return providers;
+    } catch (error) {
+      console.error(`Failed to fetch watch providers for ${tmdbId}:`, error);
+      return [];
     }
   }
 
@@ -306,6 +340,7 @@ export class ContentService implements OnModuleInit {
 
     const rawDate = type === 'movie' ? data.release_date : data.first_air_date;
     const year = rawDate ? parseInt(rawDate.slice(0, 4), 10) : 0;
+    const providers = await this.fetchWatchProviders(tmdbId, type);
     const entity = this.contentRepository.create({
       tmdbId,
       type,
@@ -318,6 +353,7 @@ export class ContentService implements OnModuleInit {
       overview: data.overview,
       cast: castMembers,
       language: data.original_language || 'en',
+      providers,
     });
     return this.contentRepository.save(entity);
   }

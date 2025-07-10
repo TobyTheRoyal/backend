@@ -39,6 +39,7 @@ export class ContentController {
     @Query('releaseYearMax') releaseYearMax?: string,
     @Query('imdbRatingMin') imdbRatingMin?: string,
     @Query('rtRatingMin') rtRatingMin?: string,
+    @Query('provider') provider?: string,
   ): Promise<Content[]> {
     const p = parseInt(page, 10) || 1;
     const filters = {
@@ -47,6 +48,7 @@ export class ContentController {
       releaseYearMax: releaseYearMax ? parseInt(releaseYearMax, 10) : new Date().getFullYear(),
       imdbRatingMin: imdbRatingMin ? parseFloat(imdbRatingMin) : 0,
       rtRatingMin: rtRatingMin ? parseInt(rtRatingMin, 10) : 0,
+      provider,
     };
     return this.contentService.getMoviesPageWithRt(p, filters);
   }
