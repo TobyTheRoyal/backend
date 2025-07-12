@@ -54,8 +54,24 @@ export class ContentController {
   }
 
   @Get('series-page')
-  async getSeriesPageWithRt(@Query('page') page = '1'): Promise<Content[]> {
+  async getSeriesPageWithRt(
+    @Query('page') page = '1',
+    @Query('genre') genre?: string,
+    @Query('releaseYearMin') releaseYearMin?: string,
+    @Query('releaseYearMax') releaseYearMax?: string,
+    @Query('imdbRatingMin') imdbRatingMin?: string,
+    @Query('rtRatingMin') rtRatingMin?: string,
+    @Query('provider') provider?: string,
+  ): Promise<Content[]> {
     const p = parseInt(page, 10) || 1;
+    const filters = {
+      genre: genre || '',
+      releaseYearMin: releaseYearMin ? parseInt(releaseYearMin, 10) : 1900,
+      releaseYearMax: releaseYearMax ? parseInt(releaseYearMax, 10) : new Date().getFullYear(),
+      imdbRatingMin: imdbRatingMin ? parseFloat(imdbRatingMin) : 0,
+      rtRatingMin: rtRatingMin ? parseInt(rtRatingMin, 10) : 0,
+      provider,
+    };
     return this.contentService.getSeriesPageWithRt(p);
   }
 

@@ -163,10 +163,20 @@ export class ContentService implements OnModuleInit {
     ).then(results => results.filter((item): item is Content => item !== null));
   }
 
-  async getSeriesPageWithRt(page: number): Promise<Content[]> {
+  async getSeriesPageWithRt(page: number, filters?: FilterOptions): Promise<Content[]> {
+    const params: any = { api_key: this.tmdbApiKey, page };
+    if (filters) {
+      if (filters.genre) {
+        params.with_genres = await this.getGenreId(filters.genre);
+      }
+      params['primary_release_date.gte'] = `${filters.releaseYearMin}-01-01`;
+      params['primary_release_date.lte'] = `${filters.releaseYearMax}-12-31`;
+      
+    }
+
     const { results } = await firstValueFrom(
       this.httpService
-        .get(`${this.tmdbBaseUrl}/discover/tv`, { params: { api_key: this.tmdbApiKey, page } })
+        .get(`${this.tmdbBaseUrl}/discover/tv`, { params })
         .pipe(
           map(r => r.data),
           catchError(() => of({ results: [] })),
@@ -190,10 +200,30 @@ export class ContentService implements OnModuleInit {
           : { imdbRating: null, rtRating: null };
         content.imdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : null;
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
-        console.log(`Fetched series ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
+        console.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
+
+        const providers = await this.fetchWatchProviders(item.id, 'tv');
+
+        if (filters?.provider && !providers.includes(filters.provider)) {
+          return null;
+        }
+
+        // Exclude if rtRating is null and rtRatingMin is set
+        if (filters && filters.rtRatingMin > 0 && content.rtRating === null) {
+          return null;
+        }
+        // Exclude if rtRating is below rtRatingMin
+        if (filters && filters.rtRatingMin > 0 && content.rtRating !== null && content.rtRating < filters.rtRatingMin) {
+          return null;
+        }
+        // Exclude if imdbRating is below imdbRatingMin
+        if (filters && filters.imdbRatingMin > 0 && content.imdbRating !== null && content.imdbRating < filters.imdbRatingMin) {
+          return null;
+        }
+
         return content;
       }),
-    );
+    ).then(results => results.filter((item): item is Content => item !== null));
   }
 
   async getGenres(): Promise<string[]> {
