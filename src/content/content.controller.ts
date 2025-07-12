@@ -72,7 +72,7 @@ export class ContentController {
       rtRatingMin: rtRatingMin ? parseInt(rtRatingMin, 10) : 0,
       provider,
     };
-    return this.contentService.getSeriesPageWithRt(p);
+    return this.contentService.getSeriesPageWithRt(p, filters);
   }
 
   @Get ('genres') 

@@ -169,8 +169,8 @@ export class ContentService implements OnModuleInit {
       if (filters.genre) {
         params.with_genres = await this.getGenreId(filters.genre);
       }
-      params['primary_release_date.gte'] = `${filters.releaseYearMin}-01-01`;
-      params['primary_release_date.lte'] = `${filters.releaseYearMax}-12-31`;
+      params['first_air_date.gte'] = `${filters.releaseYearMin}-01-01`;
+      params['first_air_date.lte'] = `${filters.releaseYearMax}-12-31`;
       
     }
 
@@ -188,15 +188,17 @@ export class ContentService implements OnModuleInit {
         const content = await this.mapToEntity(item, 'tv');
         const details = await firstValueFrom(
           this.httpService
-            .get(`${this.tmdbBaseUrl}/tv/${item.id}`, { params: { api_key: this.tmdbApiKey } })
+            .get(`${this.tmdbBaseUrl}/tv/${item.id}`, { params: { api_key: this.tmdbApiKey, append_to_response: 'external_ids' } })
             .pipe(
               map(r => r.data),
-              catchError(() => of({ imdb_id: null })),
+              catchError(() => of({ external_ids: { imdb_id: null } })),
             ),
         );
 
-        const omdb = details.imdb_id
-          ? await this.fetchOmdbData(details.imdb_id)
+        const imdbId = details.imdb_id || details.external_ids?.imdb_id;
+
+        const omdb = imdbId
+          ? await this.fetchOmdbData(imdbId)
           : { imdbRating: null, rtRating: null };
         content.imdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : null;
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
