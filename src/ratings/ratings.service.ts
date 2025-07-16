@@ -33,7 +33,15 @@ export class RatingService {
     // 1) Find or create Content by TMDb ID
     let content = await this.contentRepo.findOne({ where: { tmdbId } });
     if (!content) {
-      content = await this.contentService.addFromTmdb(tmdbId, 'movie');
+      try {
+        content = await this.contentService.addFromTmdb(tmdbId, 'movie');
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          content = await this.contentService.addFromTmdb(tmdbId, 'tv');
+        } else {
+          throw err;
+        }
+      }
     }
 
     // 2) Find existing rating
