@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Watchlist } from './entities/watchlist.entity';
@@ -8,6 +13,7 @@ import { ContentService } from '../content/content.service';
 
 @Injectable()
 export class WatchlistService {
+  private readonly logger = new Logger(WatchlistService.name);
   constructor(
     @InjectRepository(Watchlist)
     private watchlistRepository: Repository<Watchlist>,
@@ -28,7 +34,14 @@ export class WatchlistService {
       });
       return await this.watchlistRepository.save(watchlistEntry);
     } catch (error) {
-      throw new NotFoundException(`Failed to add content ${tmdbId} to watchlist: ${error.message}`);
+      if (error instanceof NotFoundException || error?.response?.status === 404) {
+        throw new NotFoundException(`Content ${tmdbId} not found`);
+      }
+      this.logger.error(
+        `Unexpected error adding ${tmdbId} to watchlist: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException('Failed to add content to watchlist');
     }
   }
 
