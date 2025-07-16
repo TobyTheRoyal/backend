@@ -7,11 +7,12 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
-  await app.listen(3000, '0.0.0.0'); // Bindet an alle Interfaces für Docker
+  const port = parseInt(process.env.PORT ?? '3000', 10);
+  await app.listen(port, '0.0.0.0');
   logger.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();
