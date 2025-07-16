@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Content } from './entities/content.entity';
@@ -24,6 +24,8 @@ export class ContentService implements OnModuleInit {
   private readonly omdbApiKey = process.env.OMDB_API_KEY!;
   private readonly tmdbBaseUrl = 'https://api.themoviedb.org/3';
   private readonly omdbBaseUrl = 'https://www.omdbapi.com/';
+
+  private readonly logger = new Logger(ContentService.name);
 
   private cacheTrending: Content[] = [];
   private cacheTopRated: Content[] = [];
@@ -82,7 +84,7 @@ export class ContentService implements OnModuleInit {
           : { imdbRating: null, rtRating: null };
         content.imdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : null;
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
-        console.log(`Cached ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
+        this.logger.log(`Cached ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
         cache.push(content);
       }
     }
@@ -137,7 +139,7 @@ export class ContentService implements OnModuleInit {
           : { imdbRating: null, rtRating: null };
         content.imdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : null;
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
-        console.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
+        this.logger.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
 
         const providers = await this.fetchWatchProviders(item.id, 'movie');
 
@@ -202,7 +204,7 @@ export class ContentService implements OnModuleInit {
           : { imdbRating: null, rtRating: null };
         content.imdbRating = omdb.imdbRating ? parseFloat(omdb.imdbRating) : null;
         content.rtRating = omdb.rtRating ? parseInt(omdb.rtRating.replace('%', ''), 10) : null;
-        console.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
+        this.logger.log(`Fetched ${content.title} (tmdbId: ${content.tmdbId}): IMDb=${content.imdbRating}, RT=${content.rtRating}`);
 
         const providers = await this.fetchWatchProviders(item.id, 'tv');
 
@@ -290,13 +292,13 @@ export class ContentService implements OnModuleInit {
         params: { i: imdbId, apikey: this.omdbApiKey },
       });
       const rtRating = data.Ratings?.find((r: any) => r.Source === 'Rotten Tomatoes')?.Value || null;
-      console.log(`OMDB for ${imdbId}: Raw IMDb=${data.imdbRating}, Raw RT=${rtRating}, Parsed IMDb=${data.imdbRating ? parseFloat(data.imdbRating) : null}, Parsed RT=${rtRating ? parseInt(rtRating.replace('%', ''), 10) : null}`);
+      this.logger.log(`OMDB for ${imdbId}: Raw IMDb=${data.imdbRating}, Raw RT=${rtRating}, Parsed IMDb=${data.imdbRating ? parseFloat(data.imdbRating) : null}, Parsed RT=${rtRating ? parseInt(rtRating.replace('%', ''), 10) : null}`);
       return {
         imdbRating: data.imdbRating || null,
         rtRating,
       };
     } catch (error) {
-      console.error(`Failed to fetch OMDB data for ${imdbId}:`, error);
+      this.logger.error(`Failed to fetch OMDB data for ${imdbId}: ${error}`);
       return { imdbRating: null, rtRating: null };
     }
   }
@@ -322,7 +324,7 @@ export class ContentService implements OnModuleInit {
       }
       return providers;
     } catch (error) {
-      console.error(`Failed to fetch watch providers for ${tmdbId}:`, error);
+      this.logger.error(`Failed to fetch watch providers for ${tmdbId}: ${error}`);
       return [];
     }
   }
@@ -357,7 +359,10 @@ export class ContentService implements OnModuleInit {
     const omdb = data.imdb_id ? await this.fetchOmdbData(data.imdb_id) : { imdbRating: null, rtRating: null };
     const genresName: string[] = data.genres.map((g: any) => g.name);
     const rawCast = type === 'movie' ? data.credits.cast : data.aggregate_credits.cast;
-    console.log('TMDB cast data:', rawCast.slice(0, 10).map((c: any) => ({ id: c.id, name: c.name })));
+    this.logger.log(
+      'TMDB cast data: ' +
+        JSON.stringify(rawCast.slice(0, 10).map((c: any) => ({ id: c.id, name: c.name }))),
+    );
     const castMembers: CastMember[] = (rawCast || []).slice(0, 10).map((c: any) => {
       const cm = new CastMember();
       cm.tmdbId = c.id;
@@ -366,7 +371,7 @@ export class ContentService implements OnModuleInit {
       cm.profilePathUrl = c.profile_path
         ? `https://image.tmdb.org/t/p/w200${c.profile_path}`
         : 'https://placehold.co/80x120';
-      console.log('Mapped CastMember:', { tmdbId: cm.tmdbId, name: cm.name });
+      this.logger.log(`Mapped CastMember: ${JSON.stringify({ tmdbId: cm.tmdbId, name: cm.name })}`);
       return cm;
     });
 

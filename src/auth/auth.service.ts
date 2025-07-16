@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -7,6 +7,7 @@ import { LoginDto } from './dtos/login.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -15,7 +16,7 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<{ access_token: string }> {
     const { username, email, password } = registerDto;
     try {
-      console.log('Registering user:', { username, email });
+      this.logger.log(`Registering user: ${JSON.stringify({ username, email })}`);
       const existingUserByEmail = await this.usersService.findByEmail(email);
       if (existingUserByEmail) throw new ConflictException('Email already exists');
       const existingUserByUsername = await this.usersService.findByUsername(username);
@@ -23,13 +24,13 @@ export class AuthService {
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await this.usersService.create({ username, email, password: hashedPassword });
       if (!user || !user.id) throw new Error('Failed to create user');
-      console.log('User created:', { id: user.id, email: user.email });
+      this.logger.log(`User created: ${JSON.stringify({ id: user.id, email: user.email })}`);
       const payload = { email: user.email, sub: user.id };
       const access_token = this.jwtService.sign(payload);
-      console.log('Generated token:', access_token);
+      this.logger.log(`Generated token for user ID: ${user.id}`);
       return { access_token };
     } catch (error) {
-      console.error('Registration error:', error.message, error.stack);
+      this.logger.error(`Registration error: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -37,23 +38,23 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<{ access_token: string }> {
     const { email, password } = loginDto;
     try {
-      console.log('Login attempt:', { email });
+      this.logger.log(`Login attempt: ${JSON.stringify({ email })}`);
       const user = await this.usersService.findByEmail(email);
       if (!user) {
-        console.log('User not found:', email);
+        this.logger.log(`User not found: ${email}`);
         throw new UnauthorizedException('Invalid credentials');
       }
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        console.log('Password invalid for:', email);
+        this.logger.log(`Password invalid for: ${email}`);
         throw new UnauthorizedException('Invalid credentials');
       }
       const payload = { email: user.email, sub: user.id };
       const access_token = this.jwtService.sign(payload);
-      console.log('Login successful, token:', access_token);
+      this.logger.log(`Login successful for user ID: ${user.id}`);
       return { access_token };
     } catch (error) {
-      console.error('Login error:', error.message, error.stack);
+      this.logger.error(`Login error: ${error.message}`, error.stack);
       throw error;
     }
   }

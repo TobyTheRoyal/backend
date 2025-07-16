@@ -1,10 +1,11 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -22,10 +23,10 @@ export class UsersService {
     const user = this.userRepository.create(userData);
     try {
       const savedUser = await this.userRepository.save(user);
-      console.log('User saved:', { id: savedUser.id, email: savedUser.email });
+      this.logger.log(`User saved: ${JSON.stringify({ id: savedUser.id, email: savedUser.email })}`);
       return savedUser;
     } catch (error) {
-      console.error('Error saving user:', error.message, error.stack);
+      this.logger.error(`Error saving user: ${error.message}`, error.stack);
       throw new ConflictException('Could not create user: ' + error.message);
     }
   }
