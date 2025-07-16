@@ -4,7 +4,7 @@ import { ContentController } from './content.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Content } from './entities/content.entity';
 import { HttpModule } from '@nestjs/axios';
-import { CastMember } from 'src/cast-member/cast-member.entity';
+import { CastMember } from '../cast-member/cast-member.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Content, CastMember]), HttpModule],

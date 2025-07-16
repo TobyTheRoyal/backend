@@ -7,7 +7,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, Observable, of, from } from 'rxjs';
 import { map, timeout, catchError, mergeMap } from 'rxjs/operators';
-import { CastMember } from 'src/cast-member/cast-member.entity';
+import { CastMember } from '../cast-member/cast-member.entity';
 
 export interface FilterOptions {
   genre: string;

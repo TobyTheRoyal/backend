@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Watchlist } from '../../watchlist/entities/watchlist.entity';
 import { Rating } from '../../ratings/entities/ratings.entity';
-import { CastMember } from 'src/cast-member/cast-member.entity';
+import { CastMember } from '../../cast-member/cast-member.entity';
 
 @Entity('contents')
 export class Content {
