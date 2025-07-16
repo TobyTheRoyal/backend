@@ -31,6 +31,10 @@
 ```bash
 $ npm install
 ```
+## Configuration
+
+Database schema synchronization is disabled by default. To enable it during
+development, set the `TYPEORM_SYNC` environment variable to `true`.
 
 ## Compile and run the project
 

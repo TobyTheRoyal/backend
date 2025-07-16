@@ -8,5 +8,7 @@ export const databaseConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASSWORD || 'securepass',
   database: process.env.DB_DATABASE || 'streamfinder',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true, // Für Entwicklung, später auf false setzen
+  // Schema synchronization is disabled by default for safety.
+  // Set TYPEORM_SYNC="true" to enable during development.
+  synchronize: process.env.TYPEORM_SYNC === 'true',
 };
