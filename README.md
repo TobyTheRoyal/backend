@@ -1,103 +1,87 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# BingeVerse Backend
+BingeVerse ist ein Backend-Service auf Basis von [NestJS](https://nestjs.com/), der Filme und Serien über die APIs von TMDB und OMDB aggregiert. Nutzer können sich registrieren, Inhalte suchen, persönliche Watchlists verwalten und Bewertungen abgeben.
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Features
+**JWT-Authentifizierung** für Registrierung und Login
+- **Trending**, **Top Rated** und **New Releases** von TMDB
+- **Suche** mit Filtern (Genre, Erscheinungsjahr, Anbieter, IMDb/Rotten-Tomatoes-Wertung)
+- **Watchlist** für eingeloggte Nutzer mit optionaler Bewertung
+- **Zeitgesteuerte Updates**: Cron-Job aktualisiert täglich die gecachten Listen
+- **PostgreSQL** Datenbank via TypeORM
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Voraussetzungen
+- Node.js 20+
+- PostgreSQL
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Installation
+1. Repository klonen und Abhängigkeiten installieren
 
 ```bash
-$ npm install
-```
-## Configuration
+   git clone <repo-url>
+   cd backend
+   npm install
+   ```
+2. Eine `.env` Datei anhand von `.env.example` anlegen und folgende Variablen setzen:
 
-Database schema synchronization is disabled by default. To enable it during
-development, set the `TYPEORM_SYNC` environment variable to `true`.
+```text
+   PORT=3000
+   CORS_ORIGIN=http://localhost:4200
+   TYPEORM_SYNC=false
+   DB_HOST=postgres
+   DB_PORT=5432
+   DB_USERNAME=streamfinder
+   DB_PASSWORD=securepass
+   DB_DATABASE=streamfinder
+   JWT_SECRET=super-secret
+   TMDB_API_KEY=dein-tmdb-key
+   OMDB_API_KEY=dein-omdb-key
+   ```
 
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Starten des Servers
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Der Server läuft standardmäßig unter `http://localhost:3000`.
 
-## Resources
+## Weitere Skripte
+- `npm run start` – Entwicklung
+- `npm run start:dev` – Watch-Mode
+- `npm run start:prod` – Produktionsbetrieb
+- `npm run test` – Unit Tests
+- `npm run test:e2e` – End-to-End Tests
+- `npm run test:cov` – Testabdeckung
 
-Check out a few resources that may come in handy when working with NestJS:
+## Docker
+```bash
+docker build -t streamfinder-backend .
+docker run --env-file .env -p 3000:3000 streamfinder-backend
+```
+## API-Übersicht
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- `POST /auth/register` – neuen Nutzer anlegen
+- `POST /auth/login` – JWT erhalten
+- `GET /content/trending` – Trends abrufen
+- `GET /content/top-rated` – bestbewertete Filme
+- `GET /content/new-releases` – Neuerscheinungen
+- `GET /content/movies-page` – paginierte Filme mit Filtern
+- `GET /content/series-page` – paginierte Serien mit Filtern
+- `GET /content/genres` – verfügbare Genres
+- `POST /watchlist/add` – Inhalt zur Watchlist hinzufügen (JWT erforderlich)
+- `POST /watchlist/rate` – Bewertung setzen
+- `GET /watchlist` – eigene Watchlist
+- `DELETE /watchlist/user/:tmdbId` – Inhalt entfernen
+- `POST /ratings` – Inhalt bewerten
+- `GET /ratings` – Bewertungen des Nutzers
 
-## Support
+## Tests
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run test
+npm run test:e2e
+```
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
+## Lizenz
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
