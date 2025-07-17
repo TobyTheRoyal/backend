@@ -2,7 +2,7 @@
 BingeVerse ist ein Backend-Service auf Basis von [NestJS](https://nestjs.com/), der Filme und Serien über die APIs von TMDB und OMDB aggregiert. Nutzer können sich registrieren, Inhalte suchen, persönliche Watchlists verwalten und Bewertungen abgeben.
 
 ## Features
-**JWT-Authentifizierung** für Registrierung und Login
+- **JWT-Authentifizierung** für Registrierung und Login
 - **Trending**, **Top Rated** und **New Releases** von TMDB
 - **Suche** mit Filtern (Genre, Erscheinungsjahr, Anbieter, IMDb/Rotten-Tomatoes-Wertung)
 - **Watchlist** für eingeloggte Nutzer mit optionaler Bewertung
